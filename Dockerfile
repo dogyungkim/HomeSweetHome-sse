@@ -1,0 +1,34 @@
+#애플리케이션 빌드 하는 부분
+#개발에 필요한것들을 모두 설치하여 로컬 소스코드를 컨테이너로 복사
+# 빌드 도구(Gradle)를 포함한 이미지를 사용하여 JAR 파일 생성
+FROM gradle:jdk21 AS builder
+
+WORKDIR /app
+
+# 의존성 캐싱을 위해 Gradle 파일 먼저 복사
+COPY build.gradle settings.gradle ./
+COPY gradle ./gradle
+COPY gradlew ./
+
+# Gradle 래퍼 스크립트 권한 설정
+RUN chmod +x ./gradlew
+
+# 의존성 다운로드
+RUN ./gradlew dependencies --no-daemon
+
+# 실제 코드 빌드
+COPY src ./src
+RUN ./gradlew clean build -x test --no-daemon
+
+#Jar파일 이미지에 저장하는 부분
+FROM amazoncorretto:21-alpine-jdk
+
+WORKDIR /app
+
+#builder 컨테이너에 들어가 builder 컨테이너 내부에 있는 파일을 app.jar로 가져오기
+# build.gradle의 version과 settings.gradle의 rootProject.name을 따름
+COPY --from=builder /app/build/libs/homesweet-sse-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]

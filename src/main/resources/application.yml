@@ -1,0 +1,52 @@
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: homesweet-sse
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+      
+
+spring:
+  application:
+    name: sse-server
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: 6379
+  # threads:
+  #   virtual:
+  #     enabled: true
+
+logging:
+  level:
+    com.homesweet.sse: ERROR
+
+jwt:
+  secret: ${JWT_SECRET:your_jwt_secret_key_must_be_long_enough_for_hmac_sha_256}
+
+# otel:
+#   service:
+#     name: homesweet-sse
+#   traces:
+#     sampler: parentbased_traceidratio
+#     sampler.arg: 0.01
+#   exporter:
+#     otlp:
+#       protocol: grpc
+#       endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+#   metrics:
+#     exporter: none
+#   logs:
+#     exporter: none
