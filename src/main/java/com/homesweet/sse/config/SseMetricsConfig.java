@@ -25,10 +25,6 @@ public class SseMetricsConfig {
 
     @PostConstruct
     public void registerMetrics() {
-        // 활성 SSE 연결 수 모니터링
-        Gauge.builder("sse.connections.active", sseService, InMemorySseService::getActiveConnectionCount)
-                .description("Number of active SSE connections")
-                .register(meterRegistry);
 
         // 활성 사용자 수 모니터링
         Gauge.builder("sse.users.active", sseService, InMemorySseService::getActiveUserCount)
@@ -43,12 +39,10 @@ public class SseMetricsConfig {
      */
     @Scheduled(fixedRate = 60000) // 1분마다
     public void logMetrics() {
-        long connectionCount = sseService.getActiveConnectionCount();
         long userCount = sseService.getActiveUserCount();
 
-        if (connectionCount > 0 || userCount > 0) {
-            log.info("SSE Metrics - Active Connections: {}, Active Users: {}",
-                    connectionCount, userCount);
+        if (userCount > 0) {
+            log.info("SSE Metrics - Active Users: {}", userCount);
         }
     }
 }

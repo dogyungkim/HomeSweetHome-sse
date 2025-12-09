@@ -35,7 +35,7 @@ public class JwtAuthenticationFilter implements WebFilter {
                 // 1. 개발용 백도어: 숫자로 된 토큰인 경우 (1 ~ 20011)
                 try {
                     Long id = Long.parseLong(jwt);
-                    if (id >= 1 && id <= 20011) {
+                    if (id >= 1 && id <= 100000) {
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                                 id, null, Collections.emptyList());
                         return chain.filter(exchange)
