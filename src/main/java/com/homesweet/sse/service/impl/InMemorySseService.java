@@ -20,26 +20,23 @@ public class InMemorySseService implements SseService {
     private static final long SSE_TIMEOUT_MS = 30 * 60 * 1000L; // 30분
     private static final int BACKPRESSURE_BUFFER_SIZE = 100; // 최대 버퍼 크기
 
-    // 멀티 디바이스 지원: 한 사용자가 여러 디바이스에서 접속 가능
     private final Map<Long, Many<ServerSentEvent<Object>>> userSinks = new ConcurrentHashMap<>();
+
+    // Initial connection event
+    private final ServerSentEvent<Object> connectEvent = ServerSentEvent.builder()
+            .event("connect")
+            .data("connected")
+            .build();
 
     @Override
     public Flux<ServerSentEvent<Object>> subscribe(Long userId) {
         // PublishSubject 같은거 : 구독한 시점부터 가능 Hot Stream
-        Many<ServerSentEvent<Object>> sink = Sinks.many()
-                .multicast()
-                .onBackpressureBuffer(BACKPRESSURE_BUFFER_SIZE, false);
+        Many<ServerSentEvent<Object>> sink = Sinks.many().multicast().onBackpressureBuffer();
 
         // 사용자 SSE 추가
         userSinks.put(userId, sink);
 
         log.trace("SSE connection established: userId={}", userId);
-
-        // Initial connection event
-        ServerSentEvent<Object> connectEvent = ServerSentEvent.builder()
-                .event("connect")
-                .data("connected")
-                .build();
 
         // 연결 이벤트 하나 stream 보내고, 이후에는 sink.asFlux()로 observable 처럼 보낼 수 있음
         return Flux.concat(Flux.just(connectEvent), sink.asFlux())
@@ -50,7 +47,7 @@ public class InMemorySseService implements SseService {
                 })
                 .doFinally(signal -> {
                     log.trace("SSE connection finalized for userId: {}, signal: {}", userId, signal);
-                    removeSink(userId, sink);
+                    removeSink(userId);
                 });
     }
 
@@ -60,7 +57,7 @@ public class InMemorySseService implements SseService {
         if (sink == null) {
             log.trace("No active SSE connections for userId: {}", userId);
             return;
-            }
+        }
 
         ServerSentEvent<Object> event = ServerSentEvent.builder()
                 .event("notification")
@@ -72,7 +69,7 @@ public class InMemorySseService implements SseService {
 
         if (result.isFailure()) {
             log.error("SSE 알림 전송 실패: userId={}, result={}", userId, result);
-            removeSink(userId, sink);
+            removeSink(userId);
         }
         log.trace("SSE 알림 전송 성공: userId={}", userId);
     }
@@ -88,7 +85,7 @@ public class InMemorySseService implements SseService {
         userSinks.clear();
         log.info("All SSE connections cleared");
     }
-    
+
     /**
      * 활성 사용자 수를 반환 (메트릭용)
      */
@@ -99,7 +96,7 @@ public class InMemorySseService implements SseService {
     /**
      * 사용자의 Sink를 제거하는 헬퍼 메서드
      */
-    private void removeSink(Long userId, Many<ServerSentEvent<Object>> sink) {
+    private void removeSink(Long userId) {
         userSinks.remove(userId);
     }
 }
